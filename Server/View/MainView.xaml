@@ -4,9 +4,15 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800"
+        Title="Encrypt2Send v1.0" Height="200" Width="400"
         ResizeMode="NoResize">
     <Grid>
-        
+        <Button x:Name="filePickerButton" Content="Browse..." Command="{Binding ChooseFile}" HorizontalAlignment="Left" Margin="309,10,0,0" VerticalAlignment="Top" Width="75" Height="23"/>
+        <TextBox IsReadOnly="True" x:Name="fileNameTextBox" HorizontalAlignment="Left" Height="23" Margin="10,10,0,0" TextWrapping="Wrap" Text="{Binding SelectedFileName, Mode=OneWay}" VerticalAlignment="Top" Width="294"/>
+        <Label x:Name="label" Content="Choose encryption mode (for AES):" HorizontalAlignment="Left" Margin="10,38,0,0" VerticalAlignment="Top" Width="196"/>
+        <RadioButton x:Name="radioButtonECB" Content="ECB" HorizontalAlignment="Left" Margin="15,64,0,0" VerticalAlignment="Top"/>
+        <RadioButton x:Name="radioButtonCBC" Content="CBC" HorizontalAlignment="Left" Margin="195,64,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.494,0"/>
+        <RadioButton x:Name="radioButtonCFB" Content="CFB" HorizontalAlignment="Left" Margin="105,64,0,0" VerticalAlignment="Top"/>
+        <RadioButton x:Name="radioButtonOFB" Content="OFB" HorizontalAlignment="Left" Margin="285,64,0,0" VerticalAlignment="Top"/>
     </Grid>
 </Window>
