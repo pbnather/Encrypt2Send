@@ -15,8 +15,11 @@ namespace Server.View
             Window window = null;
             switch (vmName)
             {
-                case "CreateMainViewModel":
+                case "MainViewModel":
                     window = new MainView() { DataContext = vm };
+                    break;
+                case "SettingsViewModel":
+                    window = new SettingsView() { DataContext = vm };
                     break;
             }
 

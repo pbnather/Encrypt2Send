@@ -6,5 +6,6 @@
         static private readonly Model.IApplication app = new Model.Application();
 
         static public MainViewModel CreateMainViewModel() => new MainViewModel(ns, app);
+        static public SettingsViewModel CreateSettingsViewModel() => new SettingsViewModel(ns, app);
     }
 }

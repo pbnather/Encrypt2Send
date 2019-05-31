@@ -1,12 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Server.Model
+﻿namespace Server.Model
 {
     interface IApplication
     {
+        void SendFile();
+
+        void ChangeEncryptionSettings();
+
+        void AddRecipient();
+
+        void ChangeRecipient();
+
+        void DeleteRecipient();
+
+        void GenerateNewIdentity();
+
+        void DeleteIdentity();
+
+        void RenameIdentity();
     }
 }
