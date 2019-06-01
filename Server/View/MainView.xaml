@@ -21,20 +21,19 @@
         </GroupBox>
         <GroupBox x:Name="sendersGroupBox" Header="Sender and Recipients" Height="268" Margin="10,144,10,0" VerticalAlignment="Top">
             <Grid Height="248" VerticalAlignment="Top">
-                <ListBox x:Name="listBox" Height="165" Margin="10,41,10,0" ItemsSource="{Binding SelectedDebtor.Debts}" VerticalAlignment="Top">
-                    <ListBox.ItemTemplate>
+                <ListView x:Name="recipientsListBox" Height="165" Margin="10,41,10,0" ItemsSource="{Binding Recipients}" VerticalAlignment="Top">
+                    <ListView.ItemTemplate>
                         <DataTemplate>
-                            <DockPanel>
-                                <TextBlock Text="{Binding Description}" DockPanel.Dock="Left" Width="100" />
-                                <TextBlock Text="{Binding Date, StringFormat='{}{0:MM/dd/yyyy}'}" DockPanel.Dock="Left" Width="80" TextAlignment="Right" />
-                                <TextBlock Text="{Binding Value}" DockPanel.Dock="Left" Width="50" TextAlignment="Right" />
+                            <DockPanel Margin="0,0,0,0">
+                                <CheckBox  IsChecked="{Binding IsChecked}" HorizontalAlignment="Left" Margin="5,5,5,5" DockPanel.Dock="Left" Width="20"/>
+                                <TextBlock Text="{Binding Recipient.Name}" Margin="5,5,5,5" DockPanel.Dock="Left" Width="100" />
                             </DockPanel>
                         </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                    </ListView.ItemTemplate>
+                </ListView>
                 <Label x:Name="recipientsLabel" Content="Recipients:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
                 <Button x:Name="editRecipientsButton" Content="Edit Recipients" Height="22" Margin="332,215,10,0" VerticalAlignment="Top"/>
-                <Label x:Name="selectedRecipientsLabel" Content="Selected Recipients: 0" HorizontalAlignment="Left" Margin="10,212,0,0" VerticalAlignment="Top"/>
+                <!--<Label x:Name="selectedRecipientsLabel" Content="{Binding SelectedRecipientsCount, StringFormat='$Selected Recipients: {0}'}" HorizontalAlignment="Left" Margin="10,212,0,0" VerticalAlignment="Top"/>-->
                 <Button x:Name="addRecipientButton" Content="Add Recipient" HorizontalAlignment="Left" Margin="237,215,0,11" Width="90"/>
             </Grid>
         </GroupBox>
@@ -45,7 +44,7 @@
                     <ColumnDefinition Width="205*"/>
                 </Grid.ColumnDefinitions>
                 <CheckBox x:Name="saveToDesktopCheckBox" Content="Save encrypted file to downloads folder" HorizontalAlignment="Left" Margin="10,13,0,0" VerticalAlignment="Top" Grid.ColumnSpan="2"/>
-                <Button x:Name="sendButton" Content="Send" Margin="325,9,10,0" VerticalAlignment="Top" Height="22" Grid.Column="1"/>
+                <Button x:Name="sendButton" Content="Send" Command="{Binding Encrypt2Send}" Margin="325,9,10,0" VerticalAlignment="Top" Height="22" Grid.Column="1"/>
                 <Button x:Name="sendingQueueButton" Content="Sending Queue" HorizontalAlignment="Left" Margin="225,9,0,0" Width="95" Grid.Column="1" Height="22" VerticalAlignment="Top"/>
             </Grid>
         </GroupBox>

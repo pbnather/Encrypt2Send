@@ -21,6 +21,9 @@ namespace Server.View
                 case "SettingsViewModel":
                     window = new SettingsView() { DataContext = vm };
                     break;
+                case "CreatePrivateKeyViewModel":
+                    window = new CreatePrivateKeyView() { DataContext = vm };
+                    break;
             }
 
             if (window == null) return;

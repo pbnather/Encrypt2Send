@@ -1,10 +1,19 @@
-﻿namespace Server.Model
+﻿using System.Collections.Generic;
+using System.Security.Cryptography;
+
+namespace Server.Model
 {
     interface IApplication
     {
-        void SendFile();
+        List<Recipient> GetRecipients();
 
-        void ChangeEncryptionSettings();
+        void EncryptAndSend(List<Recipient> recipients, string file, string newFilename);
+
+        void ChangeEncryptionSettings(CipherMode mode, int blockSize = -1);
+
+        bool HasPrivateKey();
+
+        void GeneratePrivateKey(string password);
 
         void AddRecipient();
 
@@ -12,10 +21,5 @@
 
         void DeleteRecipient();
 
-        void GenerateNewIdentity();
-
-        void DeleteIdentity();
-
-        void RenameIdentity();
     }
 }

@@ -60,15 +60,24 @@
     <Compile Include="Model\IRecipient.cs" />
     <Compile Include="Model\Recipient.cs" />
     <Compile Include="ViewModel\AbstractViewModel.cs" />
+    <Compile Include="ViewModel\CreatePrivateKeyViewModel.cs" />
     <Compile Include="ViewModel\INavigationService.cs" />
     <Compile Include="ViewModel\MainViewModel.cs" />
     <Compile Include="ViewModel\RelayCommand.cs" />
     <Compile Include="ViewModel\SettingsViewModel.cs" />
     <Compile Include="ViewModel\ViewModelFactory.cs" />
+    <Compile Include="View\CreatePrivateKeyView.xaml.cs">
+      <DependentUpon>CreatePrivateKeyView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\MVVMPasswordBox.cs" />
     <Compile Include="View\NavigationService.cs" />
     <Compile Include="View\SettingsView.xaml.cs">
       <DependentUpon>SettingsView.xaml</DependentUpon>
     </Compile>
+    <Page Include="View\CreatePrivateKeyView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="View\MainView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
