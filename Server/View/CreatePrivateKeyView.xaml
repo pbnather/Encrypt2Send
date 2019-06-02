@@ -5,8 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:v="clr-namespace:Server.View"
         mc:Ignorable="d"
-        Title="Encrypt2Send – Create Private Key" Height="140" Width="400"
-        WindowStyle="SingleBorderWindow"
+        Title="Encrypt2Send – Create Private Key" Height="104" Width="400"
+        WindowStyle="None"
+        WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
     <Grid>
         <Grid.ColumnDefinitions>

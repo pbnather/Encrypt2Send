@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Encrypt2Send" Height="526" Width="480"
+        WindowStartupLocation="CenterScreen"
         ResizeMode="CanMinimize">
     <Grid>
         <GroupBox x:Name="fileGroupBox" Header="File" Height="129" Margin="10,10,10,0" VerticalAlignment="Top">

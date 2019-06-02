@@ -20,10 +20,6 @@ namespace Server.Model
         private string PrivateKeyDirectory => Path.Combine(AppDirectory, PR_KEY_DIR);
         private AesManaged _aes { get; set; }
 
-        public byte[] key = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16 };
-        public byte[] IV = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16 };
-
-
         public Application()
         {
             _recipients = new List<Recipient>();
@@ -65,13 +61,14 @@ namespace Server.Model
             //ImportPrivateKeyFromAppDirectory();
 
             //check dummy recipient
-            foreach(Recipient rr in _recipients)
-            {
-                Console.WriteLine(rr.Name);
-            }
+            //foreach(Recipient rr in _recipients)
+            //{
+            //    Console.WriteLine(rr.Name);
+            //}
 
             if (System.Windows.MessageBox.Show("Server?", "Confirm", System.Windows.MessageBoxButton.YesNo) == System.Windows.MessageBoxResult.Yes)
             {
+
                 TcpListener server = new TcpListener(IPAddress.Parse("127.0.0.1"), 6666);
                 server.Start();
 
@@ -125,38 +122,6 @@ namespace Server.Model
 
             }
            
-        }
-
-        ~Application()
-        {
-            Console.Write("Deinitialization");
-        }
-
-        private void CreateAppDirectoryIfAbsent()
-        {
-            var localDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            AppDirectory = Path.Combine(localDirectory, APP_NAME);
-            if (!Directory.Exists(AppDirectory))
-            {
-                Directory.CreateDirectory(AppDirectory);
-            }
-            Directory.CreateDirectory(PublicKeysDirectory);
-            Directory.CreateDirectory(PrivateKeyDirectory);
-        }
-
-        private void ImportPublicKeysFromAppDirectory()
-        {
-            if(Directory.Exists(PublicKeysDirectory)) {
-                System.Xml.Serialization.XmlSerializer reader = new System.Xml.Serialization.XmlSerializer(typeof(Recipient));
-                foreach (var file in Directory.GetFiles(PublicKeysDirectory, "*pk.xml"))
-                {
-                    using (StreamReader key = new StreamReader(file))
-                    {
-                        Recipient recipient = (Recipient)reader.Deserialize(key);
-                        _recipients.Add(recipient);
-                    }
-                }
-            }
         }
 
         public List<Recipient> GetRecipients()
@@ -242,7 +207,7 @@ namespace Server.Model
                     System.Xml.Serialization.XmlSerializer rsaWriter = new System.Xml.Serialization.XmlSerializer(typeof(RSAParameters));
                     rsaWriter.Serialize(cryptoStream, privateKey);
                     System.Xml.Serialization.XmlSerializer recipientWriter = new System.Xml.Serialization.XmlSerializer(typeof(Recipient));
-                    Recipient recipient = new Recipient("myprivatekey", publicKey);
+                    Recipient recipient = new Recipient("mypublickey", publicKey, GetLocalIp(), 6666);
                     string path = Path.Combine(PublicKeysDirectory) + "/mypublickey.xml";
                     var publicKeyFile = File.Create(path);
                     recipientWriter.Serialize(publicKeyFile, recipient);
@@ -252,6 +217,59 @@ namespace Server.Model
                 cryptoStream.Close();
                 fileStream.Close();
             }
+        }
+
+        public void AddRecipient()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ChangeRecipient()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void DeleteRecipient()
+        {
+            throw new NotImplementedException();
+        }
+
+        private void CreateAppDirectoryIfAbsent()
+        {
+            var localDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            AppDirectory = Path.Combine(localDirectory, APP_NAME);
+            if (!Directory.Exists(AppDirectory))
+            {
+                Directory.CreateDirectory(AppDirectory);
+            }
+            Directory.CreateDirectory(PublicKeysDirectory);
+            Directory.CreateDirectory(PrivateKeyDirectory);
+        }
+
+        private void ImportPublicKeysFromAppDirectory()
+        {
+            if(Directory.Exists(PublicKeysDirectory)) {
+                System.Xml.Serialization.XmlSerializer reader = new System.Xml.Serialization.XmlSerializer(typeof(Recipient));
+                foreach (var file in Directory.GetFiles(PublicKeysDirectory, "*pk.xml"))
+                {
+                    using (StreamReader key = new StreamReader(file))
+                    {
+                        Recipient recipient = (Recipient)reader.Deserialize(key);
+                        _recipients.Add(recipient);
+                    }
+                }
+            }
+        }
+
+        private byte[] GetPasswordHash(string password)
+        {
+            byte[] passwordHash;
+            byte[] passwordUnicode;
+            UnicodeEncoding ue = new UnicodeEncoding();
+            passwordUnicode = ue.GetBytes(password);
+            SHA256Managed hasher = new SHA256Managed();
+            passwordHash = hasher.ComputeHash(passwordUnicode);
+            return passwordHash;
         }
 
         private AesManaged GetAesForPrivateKey(byte[] passwordHash)
@@ -277,17 +295,6 @@ namespace Server.Model
             return aes;
         }
 
-        private byte[] GetPasswordHash(string password)
-        {
-            byte[] passwordHash;
-            byte[] passwordUnicode;
-            UnicodeEncoding ue = new UnicodeEncoding();
-            passwordUnicode = ue.GetBytes(password);
-            SHA256Managed hasher = new SHA256Managed();
-            passwordHash = hasher.ComputeHash(passwordUnicode);
-            return passwordHash;
-        }
-
         private RSAParameters DecryptPrivateKey(string password)
         {
             RSAParameters rsaParameters = new RSAParameters();
@@ -307,19 +314,26 @@ namespace Server.Model
             return rsaParameters;
         }
 
-        public void AddRecipient()
+        private IPAddress GetLocalIp()
         {
-            throw new NotImplementedException();
+            IPAddress ip_Address = null;
+            IPHostEntry host = default(IPHostEntry);
+            string hostName = null;
+            hostName = Environment.MachineName;
+            host = Dns.GetHostEntry(hostName);
+            foreach (IPAddress ip in host.AddressList)
+            {
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    ip_Address = ip;
+                }
+            }
+            return ip_Address;
         }
 
-        public void ChangeRecipient()
+        ~Application()
         {
-            throw new NotImplementedException();
-        }
-
-        public void DeleteRecipient()
-        {
-            throw new NotImplementedException();
+            Console.Write("Deinitialization");
         }
     }
 }

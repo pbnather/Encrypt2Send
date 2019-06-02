@@ -11,12 +11,6 @@ namespace Server.View
         public CreatePrivateKeyView()
         {
             InitializeComponent();
-            Closing += new System.ComponentModel.CancelEventHandler(ClosingWindow);
-        }
-
-        private void ClosingWindow(object sender, CancelEventArgs e)
-        {
-            e.Cancel = true;
         }
     }
 }
