@@ -26,16 +26,16 @@
                     <ListView.ItemTemplate>
                         <DataTemplate>
                             <DockPanel Margin="0,0,0,0">
-                                <CheckBox  IsChecked="{Binding IsChecked}" HorizontalAlignment="Left" Margin="5,5,5,5" DockPanel.Dock="Left" Width="20"/>
+                                <CheckBox  IsChecked="{Binding IsChecked, Mode=TwoWay}" HorizontalAlignment="Left" Margin="5,5,5,5" DockPanel.Dock="Left" Width="20"/>
                                 <TextBlock Text="{Binding Recipient.Name}" Margin="5,5,5,5" DockPanel.Dock="Left" Width="100" />
                             </DockPanel>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
                 <Label x:Name="recipientsLabel" Content="Recipients:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
-                <Button x:Name="editRecipientsButton" Content="Edit Recipients" Height="22" Margin="332,215,10,0" VerticalAlignment="Top"/>
-                <!--<Label x:Name="selectedRecipientsLabel" Content="{Binding SelectedRecipientsCount, StringFormat='$Selected Recipients: {0}'}" HorizontalAlignment="Left" Margin="10,212,0,0" VerticalAlignment="Top"/>-->
-                <Button x:Name="addRecipientButton" Content="Add Recipient" HorizontalAlignment="Left" Margin="237,215,0,11" Width="90"/>
+                <!--<Button x:Name="editRecipientsButton" Content="Edit Recipients" Height="22" Margin="332,215,10,0" VerticalAlignment="Top"/>
+                <Label x:Name="selectedRecipientsLabel" Content="{Binding SelectedRecipientsCount, StringFormat='$Selected Recipients: {0}'}" HorizontalAlignment="Left" Margin="10,212,0,0" VerticalAlignment="Top"/>
+                <Button x:Name="addRecipientButton" Content="Add Recipient" HorizontalAlignment="Left" Margin="237,215,0,11" Width="90"/>-->
             </Grid>
         </GroupBox>
         <GroupBox x:Name="sendGroupBox" Header="Send" Margin="10,417,10,9.5">

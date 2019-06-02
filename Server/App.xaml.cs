@@ -10,11 +10,8 @@ namespace Server
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
-            Window win = new View.MainView
-            {
-                DataContext = ViewModel.ViewModelFactory.CreateMainViewModel()
-            };
-            win.Show();
+
+            ViewModel.ViewModelFactory.ns.OpenWindow(ViewModel.ViewModelFactory.CreateMainViewModel());
         }
     }
 }
