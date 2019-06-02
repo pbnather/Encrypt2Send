@@ -49,7 +49,7 @@ namespace Server.ViewModel
                 }
             }
 
-            public CheckableRecipient(Recipient recipient, bool isChecked = true)
+            public CheckableRecipient(Recipient recipient, bool isChecked = false)
             {
                 _recipient = recipient;
                 _isChecked = isChecked;
@@ -64,7 +64,9 @@ namespace Server.ViewModel
         }
         private List<Recipient> _recipients { get; set; }
         private List<CheckableRecipient> _checkableRecipients { get; set; }
-        public List<CheckableRecipient> Recipients { get
+        public List<CheckableRecipient> Recipients
+        {
+            get
             {
                 return _checkableRecipients;
             }
@@ -79,7 +81,7 @@ namespace Server.ViewModel
         {
             _recipients = _app.GetRecipients();
             _checkableRecipients = _recipients.ConvertAll(r => new CheckableRecipient(r));
-            if(!_app.HasPrivateKey())
+            if (!_app.HasPrivateKey())
             {
                 _navService.OpenWindow(ViewModelFactory.CreateCreatePrivateKeyViewModel());
             }
@@ -116,14 +118,19 @@ namespace Server.ViewModel
         private void EncryptAndSend()
         {
             List<Recipient> selectedRecipients = _checkableRecipients
-                .FindAll(r => r.IsChecked = true)
+                .FindAll(r => r.IsChecked == true)
                 .ConvertAll(r => r.Recipient);
             _app.EncryptAndSend(selectedRecipients, SelectedFileName, EncryptedFileName);
         }
 
+        public void OnWindowClosing(object sender, CancelEventArgs e)
+        {
+            _app.Shutdown();
+        }
+
         protected override void ExitWindow()
         {
-            _navService.CloseWindow(typeof(MainViewModel));
+            _navService.CloseWindow(typeof(CreatePrivateKeyViewModel));
         }
     }
 }

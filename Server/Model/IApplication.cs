@@ -21,5 +21,6 @@ namespace Server.Model
 
         void DeleteRecipient();
 
+        void Shutdown();
     }
 }

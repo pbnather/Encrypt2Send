@@ -17,6 +17,7 @@ namespace Server.View
             {
                 case "MainViewModel":
                     window = new MainView() { DataContext = vm };
+                    window.Closing += ((MainViewModel)window.DataContext).OnWindowClosing;
                     break;
                 case "SettingsViewModel":
                     window = new SettingsView() { DataContext = vm };

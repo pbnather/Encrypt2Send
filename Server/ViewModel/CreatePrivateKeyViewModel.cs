@@ -31,6 +31,7 @@ namespace Server.ViewModel
             _app.GeneratePrivateKey(Password);
             ExitWindow();
         }
+
         protected override void ExitWindow()
         {
             _navService.CloseWindow(typeof(CreatePrivateKeyViewModel));

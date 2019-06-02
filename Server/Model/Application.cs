@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace Server.Model
 {
@@ -14,15 +15,20 @@ namespace Server.Model
         private readonly static string PB_KEY_DIR = "PublicKeys";
         private readonly static string PR_KEY_DIR = "PrivateKeys";
         private readonly static int BUFFER_SIZE = 1024;
+
+        private string _appDirectory { get; set; }
+        private string _publicKeysDirectory => Path.Combine(_appDirectory, PB_KEY_DIR);
+        private string _privateKeyDirectory => Path.Combine(_appDirectory, PR_KEY_DIR);
         private List<Recipient> _recipients { get; set; }
-        private string AppDirectory { get; set; }
-        private string PublicKeysDirectory => Path.Combine(AppDirectory, PB_KEY_DIR);
-        private string PrivateKeyDirectory => Path.Combine(AppDirectory, PR_KEY_DIR);
+        private List<TransferJob> _jobs { get; set; }
+        private Thread _serverthread { get; set; }
         private AesManaged _aes { get; set; }
+        private volatile bool _appIsRunning;
 
         public Application()
         {
             _recipients = new List<Recipient>();
+            _jobs = new List<TransferJob>();
             _aes = new AesManaged
             {
                 Mode = CipherMode.CBC,
@@ -32,96 +38,12 @@ namespace Server.Model
             };
 
             CreateAppDirectoryIfAbsent();
-
-            // Create dummy public key
-            using(RSACryptoServiceProvider rsa = new RSACryptoServiceProvider())
-            {
-                var rsaParameters = rsa.ExportParameters(false);
-                string name = "test@email.com";
-                Recipient r = new Recipient(name, rsaParameters);
-                System.Xml.Serialization.XmlSerializer writer = new System.Xml.Serialization.XmlSerializer(typeof(Recipient));
-                string path = Path.Combine(AppDirectory, PB_KEY_DIR) + "/serializedpk.xml";
-                var file = File.Create(path);
-                writer.Serialize(file, r);
-                file.Close();
-            }
-            using (RSACryptoServiceProvider rsa = new RSACryptoServiceProvider())
-            {
-                var rsaParameters = rsa.ExportParameters(false);
-                string name = "greeter@test.com";
-                Recipient r = new Recipient(name, rsaParameters);
-                System.Xml.Serialization.XmlSerializer writer = new System.Xml.Serialization.XmlSerializer(typeof(Recipient));
-                string path = Path.Combine(AppDirectory, PB_KEY_DIR) + "/serialized2pk.xml";
-                var file = File.Create(path);
-                writer.Serialize(file, r);
-                file.Close();
-            }
-
             ImportPublicKeysFromAppDirectory();
-            //ImportPrivateKeyFromAppDirectory();
 
-            //check dummy recipient
-            //foreach(Recipient rr in _recipients)
-            //{
-            //    Console.WriteLine(rr.Name);
-            //}
-
-            if (System.Windows.MessageBox.Show("Server?", "Confirm", System.Windows.MessageBoxButton.YesNo) == System.Windows.MessageBoxResult.Yes)
-            {
-
-                TcpListener server = new TcpListener(IPAddress.Parse("127.0.0.1"), 6666);
-                server.Start();
-
-                TcpClient client = server.AcceptTcpClient();
-                NetworkStream netStream = client.GetStream();
-                string path = Path.Combine(AppDirectory, PB_KEY_DIR) + "/file.cpp";
-                FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
-
-                byte[] buffer = new byte[BUFFER_SIZE];
-
-                netStream.Read(buffer, 0, 4);
-                int keySize = BitConverter.ToInt32(buffer, 0);
-                netStream.Read(buffer, 0, 4);
-                int blockSize = BitConverter.ToInt32(buffer, 0);
-                netStream.Read(buffer, 0, 4);
-                CipherMode cipherMode = (CipherMode) BitConverter.ToInt32(buffer, 0);
-                netStream.Read(buffer, 0, 4);
-                PaddingMode paddingMode = (PaddingMode) BitConverter.ToInt32(buffer, 0);
-                netStream.Read(buffer, 0, 4);
-                int keyLength = BitConverter.ToInt32(buffer, 0);
-                netStream.Read(buffer, 0, 4);
-                int ivLength = BitConverter.ToInt32(buffer, 0);
-
-                byte[] k = new byte[keyLength];
-                byte[] iv = new byte[ivLength];
-
-                netStream.Read(k, 0, keyLength);
-                netStream.Read(iv, 0, ivLength);
-
-                AesManaged aes = new AesManaged()
-                {
-                    KeySize = keySize,
-                    Key = k,
-                    IV = iv,
-                    BlockSize = blockSize,
-                    Mode = cipherMode,
-                    Padding = paddingMode
-                };
-
-                CryptoStream cryptoStream = new CryptoStream(fileStream, aes.CreateDecryptor(), CryptoStreamMode.Write);
-
-                int bytesReceived;
-                while((bytesReceived = netStream.Read(buffer, 0, buffer.Length))>0)
-                {
-                    cryptoStream.Write(buffer, 0, bytesReceived);
-                }
-
-                fileStream.Close();
-                netStream.Close();
-                client.Close();
-
-            }
-           
+            _appIsRunning = true;
+            _serverthread = new Thread(new ThreadStart(StartServer));
+            _serverthread.IsBackground = true;
+            _serverthread.Start();
         }
 
         public List<Recipient> GetRecipients()
@@ -131,51 +53,18 @@ namespace Server.Model
 
         public void EncryptAndSend(List<Recipient> recipients, string file, string newFilename)
         {
-            if(File.Exists(file))
+            if (File.Exists(file))
             {
-                TcpClient connection = new TcpClient("127.0.0.1", 6666);
-                NetworkStream netStream = connection.GetStream();
-                FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
-
-                int keySize = _aes.KeySize;
-                int blockSize = _aes.BlockSize;
-                int cipherMode = (int) _aes.Mode;
-                int paddingMode = (int)_aes.Padding;
-
-                netStream.Write(BitConverter.GetBytes(keySize), 0, 4);
-                netStream.Write(BitConverter.GetBytes(blockSize), 0, 4);
-                netStream.Write(BitConverter.GetBytes(cipherMode), 0, 4);
-                netStream.Write(BitConverter.GetBytes(paddingMode), 0, 4);
-                netStream.Write(BitConverter.GetBytes(_aes.Key.Length), 0, 4);
-                netStream.Write(BitConverter.GetBytes(_aes.IV.Length), 0, 4);
-
-                netStream.Write(_aes.Key, 0, _aes.Key.Length);
-                netStream.Write(_aes.IV, 0, _aes.IV.Length);
-
-                CryptoStream cryptoStream = new CryptoStream(fileStream, _aes.CreateEncryptor(), CryptoStreamMode.Read);
-
-                int fileLength = (int)fileStream.Length;
-                int residuum = fileLength % 16;
-                int remainingFileSize = residuum == 0 ? fileLength + 16 : fileLength + 32 - residuum;
-                int packetSize = 0;
-                byte[] buffer;
-
-                while(remainingFileSize > 0)
+                foreach(Recipient recipient in recipients)
                 {
-                    if (remainingFileSize > BUFFER_SIZE) packetSize = BUFFER_SIZE;
-                    else packetSize = remainingFileSize;
-                    remainingFileSize -= packetSize;
-
-                    buffer = new byte[packetSize];
-                    cryptoStream.Read(buffer, 0, packetSize);
-                    if(remainingFileSize == 0 && residuum != 0) netStream.Write(buffer, 0, packetSize - (16 - residuum));
-                    else netStream.Write(buffer, 0, packetSize);
+                    TcpClient client = new TcpClient(recipient.IpAddress, 6666);
+                    Thread job = new Thread(() => SendFile(client, file, newFilename))
+                    {
+                        IsBackground = true
+                    };
+                    TransferJob send = new TransferJob(job, client, TransferJob.JobType.UPLOAD);
+                    send.Start(false);
                 }
-
-                cryptoStream.Close();
-                fileStream.Close();
-                netStream.Close();
-                connection.Close();
             }
         }
 
@@ -186,7 +75,7 @@ namespace Server.Model
 
         public bool HasPrivateKey()
         {
-            if (Directory.GetFiles(PrivateKeyDirectory, "myprivatekey.xml").Length == 1) return true;
+            if (Directory.GetFiles(_privateKeyDirectory, "myprivatekey.xml").Length == 1) return true;
             else return false;
         }
 
@@ -196,7 +85,7 @@ namespace Server.Model
 
             using (AesManaged aes = GetAesForPrivateKey(passwordHash))
             {
-                string file = Path.Combine(PrivateKeyDirectory) + "/myprivatekey.xml";
+                string file = Path.Combine(_privateKeyDirectory) + "/myprivatekey.xml";
                 FileStream fileStream = new FileStream(file, FileMode.Create, FileAccess.ReadWrite);
                 CryptoStream cryptoStream = new CryptoStream(fileStream, aes.CreateEncryptor(), CryptoStreamMode.Write);
 
@@ -208,7 +97,7 @@ namespace Server.Model
                     rsaWriter.Serialize(cryptoStream, privateKey);
                     System.Xml.Serialization.XmlSerializer recipientWriter = new System.Xml.Serialization.XmlSerializer(typeof(Recipient));
                     Recipient recipient = new Recipient("mypublickey", publicKey, GetLocalIp(), 6666);
-                    string path = Path.Combine(PublicKeysDirectory) + "/mypublickey.xml";
+                    string path = Path.Combine(_publicKeysDirectory) + "/mypublickey.xml";
                     var publicKeyFile = File.Create(path);
                     recipientWriter.Serialize(publicKeyFile, recipient);
                     publicKeyFile.Close();
@@ -234,23 +123,142 @@ namespace Server.Model
             throw new NotImplementedException();
         }
 
+        private void StartServer()
+        {
+            TcpListener server = new TcpListener(GetLocalIp(), 6666);
+            server.Start();
+
+            while (_appIsRunning)
+            {
+
+                TcpClient client = server.AcceptTcpClient();
+
+                Thread job = new Thread(new ParameterizedThreadStart(ReceiveFile))
+                {
+                    IsBackground = true
+                };
+                TransferJob download = new TransferJob(job, client, TransferJob.JobType.DOWNLOAD);
+                _jobs.Add(download);
+                download.Start();
+
+            }
+        }
+
+        private void SendFile(TcpClient connection, string file, string fileName)
+        {
+
+            NetworkStream netStream = connection.GetStream();
+            FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+
+            int keySize = _aes.KeySize;
+            int blockSize = _aes.BlockSize;
+            int cipherMode = (int)_aes.Mode;
+            int paddingMode = (int)_aes.Padding;
+
+            netStream.Write(BitConverter.GetBytes(keySize), 0, 4);
+            netStream.Write(BitConverter.GetBytes(blockSize), 0, 4);
+            netStream.Write(BitConverter.GetBytes(cipherMode), 0, 4);
+            netStream.Write(BitConverter.GetBytes(paddingMode), 0, 4);
+            netStream.Write(BitConverter.GetBytes(_aes.Key.Length), 0, 4);
+            netStream.Write(BitConverter.GetBytes(_aes.IV.Length), 0, 4);
+
+            netStream.Write(_aes.Key, 0, _aes.Key.Length);
+            netStream.Write(_aes.IV, 0, _aes.IV.Length);
+
+            CryptoStream cryptoStream = new CryptoStream(fileStream, _aes.CreateEncryptor(), CryptoStreamMode.Read);
+
+            int fileLength = (int)fileStream.Length;
+            int residuum = fileLength % 16;
+            int remainingFileSize = residuum == 0 ? fileLength + 16 : fileLength + 32 - residuum;
+            int packetSize = 0;
+            byte[] buffer;
+
+            while (remainingFileSize > 0)
+            {
+                if (remainingFileSize > BUFFER_SIZE) packetSize = BUFFER_SIZE;
+                else packetSize = remainingFileSize;
+                remainingFileSize -= packetSize;
+
+                buffer = new byte[packetSize];
+                cryptoStream.Read(buffer, 0, packetSize);
+                if (remainingFileSize == 0 && residuum != 0) netStream.Write(buffer, 0, packetSize - (16 - residuum));
+                else netStream.Write(buffer, 0, packetSize);
+            }
+
+            cryptoStream.Close();
+            fileStream.Close();
+            netStream.Close();
+            connection.Close();
+        }
+
+        private void ReceiveFile(object obj)
+        {
+            TcpClient client = (TcpClient)obj;
+            NetworkStream netStream = client.GetStream();
+            string path = Path.Combine(_appDirectory, PB_KEY_DIR) + "/file2.cpp";
+            FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
+
+            byte[] buffer = new byte[BUFFER_SIZE];
+
+            netStream.Read(buffer, 0, 4);
+            int keySize = BitConverter.ToInt32(buffer, 0);
+            netStream.Read(buffer, 0, 4);
+            int blockSize = BitConverter.ToInt32(buffer, 0);
+            netStream.Read(buffer, 0, 4);
+            CipherMode cipherMode = (CipherMode)BitConverter.ToInt32(buffer, 0);
+            netStream.Read(buffer, 0, 4);
+            PaddingMode paddingMode = (PaddingMode)BitConverter.ToInt32(buffer, 0);
+            netStream.Read(buffer, 0, 4);
+            int keyLength = BitConverter.ToInt32(buffer, 0);
+            netStream.Read(buffer, 0, 4);
+            int ivLength = BitConverter.ToInt32(buffer, 0);
+
+            byte[] k = new byte[keyLength];
+            byte[] iv = new byte[ivLength];
+
+            netStream.Read(k, 0, keyLength);
+            netStream.Read(iv, 0, ivLength);
+
+            AesManaged aes = new AesManaged()
+            {
+                KeySize = keySize,
+                Key = k,
+                IV = iv,
+                BlockSize = blockSize,
+                Mode = cipherMode,
+                Padding = paddingMode
+            };
+
+            CryptoStream cryptoStream = new CryptoStream(fileStream, aes.CreateDecryptor(), CryptoStreamMode.Write);
+
+            int bytesReceived;
+            while ((bytesReceived = netStream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                cryptoStream.Write(buffer, 0, bytesReceived);
+            }
+
+            fileStream.Close();
+            netStream.Close();
+            client.Close();
+        }
+
         private void CreateAppDirectoryIfAbsent()
         {
             var localDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            AppDirectory = Path.Combine(localDirectory, APP_NAME);
-            if (!Directory.Exists(AppDirectory))
+            _appDirectory = Path.Combine(localDirectory, APP_NAME);
+            if (!Directory.Exists(_appDirectory))
             {
-                Directory.CreateDirectory(AppDirectory);
+                Directory.CreateDirectory(_appDirectory);
             }
-            Directory.CreateDirectory(PublicKeysDirectory);
-            Directory.CreateDirectory(PrivateKeyDirectory);
+            Directory.CreateDirectory(_publicKeysDirectory);
+            Directory.CreateDirectory(_privateKeyDirectory);
         }
 
         private void ImportPublicKeysFromAppDirectory()
         {
-            if(Directory.Exists(PublicKeysDirectory)) {
+            if(Directory.Exists(_publicKeysDirectory)) {
                 System.Xml.Serialization.XmlSerializer reader = new System.Xml.Serialization.XmlSerializer(typeof(Recipient));
-                foreach (var file in Directory.GetFiles(PublicKeysDirectory, "*pk.xml"))
+                foreach (var file in Directory.GetFiles(_publicKeysDirectory, "*pk.xml"))
                 {
                     using (StreamReader key = new StreamReader(file))
                     {
@@ -301,7 +309,7 @@ namespace Server.Model
             byte[] passwordHash = GetPasswordHash(password);
             using(AesManaged aes = GetAesForPrivateKey(passwordHash))
             {
-                string file = Path.Combine(PrivateKeyDirectory) + "/myprivatekey.xml";
+                string file = Path.Combine(_privateKeyDirectory) + "/myprivatekey.xml";
                 FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
                 CryptoStream cryptoStream = new CryptoStream(fileStream, aes.CreateDecryptor(), CryptoStreamMode.Read);
 
@@ -331,9 +339,14 @@ namespace Server.Model
             return ip_Address;
         }
 
+        public void Shutdown()
+        {
+            _appIsRunning = false;
+        }
+
         ~Application()
         {
-            Console.Write("Deinitialization");
+            Shutdown();
         }
     }
 }

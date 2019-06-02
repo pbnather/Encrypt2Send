@@ -59,6 +59,7 @@
     <Compile Include="Model\IApplication.cs" />
     <Compile Include="Model\IRecipient.cs" />
     <Compile Include="Model\Recipient.cs" />
+    <Compile Include="Model\TransferJob.cs" />
     <Compile Include="ViewModel\AbstractViewModel.cs" />
     <Compile Include="ViewModel\CreatePrivateKeyViewModel.cs" />
     <Compile Include="ViewModel\INavigationService.cs" />
