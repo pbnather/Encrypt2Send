@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Windows.Threading;
 
 namespace Server.Model
 {
@@ -24,6 +25,7 @@ namespace Server.Model
         private ItemsChangeObservableCollection<TransferJob> _jobs { get; set; }
         private Thread _serverthread { get; set; }
         private AesManaged _aes { get; set; }
+        private Dispatcher _dispatcher { get; set; }
         private volatile bool _appIsRunning;
 
         public Application()
@@ -55,6 +57,8 @@ namespace Server.Model
 
             CreateAppDirectoryIfAbsent();
             ImportPublicKeysFromAppDirectory();
+
+            _dispatcher = Dispatcher.CurrentDispatcher;
 
             _appIsRunning = true;
             _serverthread = new Thread(new ThreadStart(StartServer));
@@ -151,12 +155,9 @@ namespace Server.Model
 
                 TcpClient client = server.AcceptTcpClient();
 
-                Thread job = new Thread(new ParameterizedThreadStart(ReceiveFile))
-                {
-                    IsBackground = true
-                };
+                Thread job = new Thread(new ParameterizedThreadStart(ReceiveFile));
                 TransferJob download = new TransferJob(job, client, TransferJob.JobStatus.DOWNLOADING);
-                _jobs.Add(download);
+                _dispatcher.Invoke(() => _jobs.Add(download));
                 download.Start();
 
             }
@@ -271,6 +272,7 @@ namespace Server.Model
                 transferJob.Progress.Value = (fileSize - bytesReceived) / progressStep;
             }
 
+            transferJob.Progress.Value = transferJob.Progress.Maximum;
             fileStream.Close();
             netStream.Close();
             transferJob._client.Close();
