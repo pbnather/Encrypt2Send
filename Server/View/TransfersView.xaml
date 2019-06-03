@@ -1,0 +1,23 @@
+﻿<Window x:Class="Server.View.TransfersView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Transfers" Height="526" Width="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    <Grid>
+        <ListBox x:Name="transferJobsListBox" ItemsSource="{Binding Transfers}" HorizontalAlignment="Left" Height="477" Margin="10,10,0,0" VerticalAlignment="Top" Width="454">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <DockPanel Margin="0,0,0,0">
+                        <!--<CheckBox  IsChecked="{Binding IsChecked, Mode=TwoWay}" HorizontalAlignment="Left" Margin="5,5,5,5" DockPanel.Dock="Left" Width="20"/>-->
+                        <TextBlock Text="{Binding JobType}" Margin="5,5,5,5" DockPanel.Dock="Left" Width="100" />
+                        <ProgressBar Minimum="{Binding JobProgress.Minimum}" Maximum="{Binding JobProgress.Maximum}" Value="{Binding JobProgress.Value}" x:Name="jobProgressBar" Height="10" Width="100"/>
+                    </DockPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</Window>

@@ -5,10 +5,16 @@ namespace Server.Model
 {
     class TransferJob
     {
-        private Thread _thread { get; set; }
-        private TcpClient _client { get; set; }
-        public JobType _jobType { get; private set; }
-
+        public Thread _thread { get; set; }
+        public TcpClient _client { get; set; }
+        public JobType Type { get; private set; }
+        public Progress JobProgress { get; set; } 
+        public class Progress
+        {
+            public double Value { get; set; }
+            public double Maximum { get; set; }
+            public double Minimum { get; set; }
+        }
         public enum JobType
         {
             DOWNLOAD,
@@ -20,12 +26,13 @@ namespace Server.Model
         {
             _thread = job;
             _client = client;
-            _jobType = jobType;
+            Type = jobType;
+            JobProgress = new Progress();
         }
 
         public void Start(bool parametrized = true)
         {
-            if(parametrized) _thread.Start(_client);
+            if(parametrized) _thread.Start(JobProgress);
             else _thread.Start();
         }
     }

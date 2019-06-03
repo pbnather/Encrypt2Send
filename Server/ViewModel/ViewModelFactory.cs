@@ -9,5 +9,6 @@
         static public MainViewModel CreateMainViewModel() => new MainViewModel(ns, app);
         static public SettingsViewModel CreateSettingsViewModel() => new SettingsViewModel(ns, app);
         static public CreatePrivateKeyViewModel CreateCreatePrivateKeyViewModel() => new CreatePrivateKeyViewModel(ns, app);
+        static public TransfersViewModel CreateTransfersViewModel() => new TransfersViewModel(ns, app);
     }
 }

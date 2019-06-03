@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -20,7 +21,7 @@ namespace Server.Model
         private string _publicKeysDirectory => Path.Combine(_appDirectory, PB_KEY_DIR);
         private string _privateKeyDirectory => Path.Combine(_appDirectory, PR_KEY_DIR);
         private List<Recipient> _recipients { get; set; }
-        private List<TransferJob> _jobs { get; set; }
+        private ObservableCollection<TransferJob> _jobs { get; set; }
         private Thread _serverthread { get; set; }
         private AesManaged _aes { get; set; }
         private volatile bool _appIsRunning;
@@ -28,7 +29,21 @@ namespace Server.Model
         public Application()
         {
             _recipients = new List<Recipient>();
-            _jobs = new List<TransferJob>();
+
+            _jobs = new ObservableCollection<TransferJob>();
+            _jobs.Add(new TransferJob(new Thread((object obj) =>
+            {
+                TransferJob.Progress p = (TransferJob.Progress)obj;
+                p.Maximum = 10;
+                p.Minimum = 0;
+                for(int i=0;i<10;i++)
+                {
+                    p.Value = i+1;
+                    Thread.Sleep(1000);
+                    
+                }
+            }), null, TransferJob.JobType.DOWNLOAD));
+
             _aes = new AesManaged
             {
                 Mode = CipherMode.CBC,
@@ -342,6 +357,11 @@ namespace Server.Model
         public void Shutdown()
         {
             _appIsRunning = false;
+        }
+
+        public ObservableCollection<TransferJob> GetTransfers()
+        {
+            return _jobs;
         }
 
         ~Application()

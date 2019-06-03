@@ -9,7 +9,7 @@ namespace Server.View
     {
         private Dictionary<string,Window> activeWindows = new Dictionary<string, Window>();
 
-        public void OpenWindow(AbstractViewModel vm)
+        public void OpenWindow(AbstractViewModel vm, bool disable = true)
         {
             string vmName = vm.GetType().Name;
             Window window = null;
@@ -25,13 +25,17 @@ namespace Server.View
                 case "CreatePrivateKeyViewModel":
                     window = new CreatePrivateKeyView() { DataContext = vm };
                     break;
+                case "TransfersViewModel":
+                    window = new TransfersView() { DataContext = vm };
+                    break;
             }
 
             if (window == null) return;
             if (activeWindows.ContainsKey(vmName)) activeWindows.Remove(vmName);
             activeWindows.Add(vmName, window);
 
-            window.ShowDialog();
+            if(disable) window.ShowDialog();
+            else window.Show();
         }
 
         public void CloseWindow(Type vm)

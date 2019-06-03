@@ -1,10 +1,13 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Security.Cryptography;
 
 namespace Server.Model
 {
     interface IApplication
     {
+        ObservableCollection<TransferJob> GetTransfers();
+
         List<Recipient> GetRecipients();
 
         void EncryptAndSend(List<Recipient> recipients, string file, string newFilename);

@@ -112,6 +112,14 @@ namespace Server.ViewModel
             _navService.OpenWindow(ViewModelFactory.CreateSettingsViewModel());
         }
 
+        private ICommand _showTransfers;
+        public ICommand ShowTransfers => _showTransfers ?? (_showTransfers = new RelayCommand(NavigateToTransfersView));
+
+        private void NavigateToTransfersView()
+        {
+            _navService.OpenWindow(ViewModelFactory.CreateTransfersViewModel(), false);
+        }
+
         private ICommand _encrypt2Send;
         public ICommand Encrypt2Send => _encrypt2Send ?? (_encrypt2Send = new RelayCommand(EncryptAndSend));
 
@@ -130,7 +138,7 @@ namespace Server.ViewModel
 
         protected override void ExitWindow()
         {
-            _navService.CloseWindow(typeof(CreatePrivateKeyViewModel));
+            _navService.CloseWindow(typeof(MainViewModel));
         }
     }
 }
