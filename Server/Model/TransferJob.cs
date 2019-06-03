@@ -32,7 +32,7 @@ namespace Server.Model
 
         public void Start(bool parametrized = true)
         {
-            if(parametrized) _thread.Start(JobProgress);
+            if(parametrized) _thread.Start(_client);
             else _thread.Start();
         }
     }
