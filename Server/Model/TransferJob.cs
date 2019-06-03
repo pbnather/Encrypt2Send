@@ -108,7 +108,7 @@ namespace Server.Model
 
         public void Start()
         {
-            if (!_thread.IsAlive)
+            if (!_thread.IsAlive && _thread.ThreadState != ThreadState.Stopped)
             {
                 _thread.Start(this);
             }
