@@ -117,6 +117,7 @@ namespace Server.ViewModel
 
         private void NavigateToTransfersView()
         {
+            _app.AddRecipient();
             _navService.OpenWindow(ViewModelFactory.CreateTransfersViewModel(), false);
         }
 

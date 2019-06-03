@@ -21,7 +21,7 @@ namespace Server.Model
         private string _publicKeysDirectory => Path.Combine(_appDirectory, PB_KEY_DIR);
         private string _privateKeyDirectory => Path.Combine(_appDirectory, PR_KEY_DIR);
         private List<Recipient> _recipients { get; set; }
-        private ObservableCollection<TransferJob> _jobs { get; set; }
+        private ItemsChangeObservableCollection<TransferJob> _jobs { get; set; }
         private Thread _serverthread { get; set; }
         private AesManaged _aes { get; set; }
         private volatile bool _appIsRunning;
@@ -30,19 +30,20 @@ namespace Server.Model
         {
             _recipients = new List<Recipient>();
 
-            _jobs = new ObservableCollection<TransferJob>();
+            _jobs = new ItemsChangeObservableCollection<TransferJob>();
             _jobs.Add(new TransferJob(new Thread((object obj) =>
             {
-                TransferJob.Progress p = (TransferJob.Progress)obj;
+                TransferJob l = (TransferJob)obj;
+                TransferJob.JobProgress p = l.Progress;
                 p.Maximum = 10;
                 p.Minimum = 0;
-                for(int i=0;i<10;i++)
+                for (int i = 0; i < 10; i++)
                 {
-                    p.Value = i+1;
+                    p.Value = i + 1;
                     Thread.Sleep(1000);
-                    
+
                 }
-            }), null, TransferJob.JobType.DOWNLOAD));
+            }), null, TransferJob.JobStatus.DOWNLOADING));
 
             _aes = new AesManaged
             {
@@ -73,12 +74,11 @@ namespace Server.Model
                 foreach(Recipient recipient in recipients)
                 {
                     TcpClient client = new TcpClient(recipient.IpAddress, 6666);
-                    Thread job = new Thread(() => SendFile(client, file, newFilename))
-                    {
-                        IsBackground = true
-                    };
-                    TransferJob send = new TransferJob(job, client, TransferJob.JobType.UPLOAD);
-                    send.Start(false);
+                    Thread job = new Thread(new ParameterizedThreadStart(SendFile));
+                    TransferJob send = new TransferJob(job, client, TransferJob.JobStatus.UPLOADING);
+                    _jobs.Add(send);
+                    send.FileName = file;
+                    send.Start();
                 }
             }
         }
@@ -125,7 +125,10 @@ namespace Server.Model
 
         public void AddRecipient()
         {
-            throw new NotImplementedException();
+            foreach (TransferJob j in _jobs)
+            {
+                j.Start();
+            }
         }
 
         public void ChangeRecipient()
@@ -152,24 +155,36 @@ namespace Server.Model
                 {
                     IsBackground = true
                 };
-                TransferJob download = new TransferJob(job, client, TransferJob.JobType.DOWNLOAD);
+                TransferJob download = new TransferJob(job, client, TransferJob.JobStatus.DOWNLOADING);
                 _jobs.Add(download);
                 download.Start();
 
             }
         }
 
-        private void SendFile(TcpClient connection, string file, string fileName)
+        private void SendFile(object obj)
         {
+            TransferJob transferJob = (TransferJob)obj;
 
-            NetworkStream netStream = connection.GetStream();
-            FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);
+            NetworkStream netStream = transferJob._client.GetStream();
+            FileStream fileStream = new FileStream(transferJob.FileName, FileMode.Open, FileAccess.Read);
+            transferJob.Progress.Minimum = 0;
+            transferJob.Progress.Maximum = 100;
+            transferJob.Progress.Value = 0;
 
             int keySize = _aes.KeySize;
             int blockSize = _aes.BlockSize;
             int cipherMode = (int)_aes.Mode;
             int paddingMode = (int)_aes.Padding;
+            int fileLength = (int)fileStream.Length;
+            int residuum = fileLength % 16;
+            int remainingFileSize = residuum == 0 ? fileLength + 16 : fileLength + 32 - residuum;
+            int fileSize = remainingFileSize;
+            int progressStep = fileSize / 100;
+            int packetSize = 0;
+            byte[] buffer;
 
+            netStream.Write(BitConverter.GetBytes(fileSize), 0, 4);
             netStream.Write(BitConverter.GetBytes(keySize), 0, 4);
             netStream.Write(BitConverter.GetBytes(blockSize), 0, 4);
             netStream.Write(BitConverter.GetBytes(cipherMode), 0, 4);
@@ -182,13 +197,7 @@ namespace Server.Model
 
             CryptoStream cryptoStream = new CryptoStream(fileStream, _aes.CreateEncryptor(), CryptoStreamMode.Read);
 
-            int fileLength = (int)fileStream.Length;
-            int residuum = fileLength % 16;
-            int remainingFileSize = residuum == 0 ? fileLength + 16 : fileLength + 32 - residuum;
-            int packetSize = 0;
-            byte[] buffer;
-
-            while (remainingFileSize > 0)
+            while (_appIsRunning && remainingFileSize > 0)
             {
                 if (remainingFileSize > BUFFER_SIZE) packetSize = BUFFER_SIZE;
                 else packetSize = remainingFileSize;
@@ -198,22 +207,31 @@ namespace Server.Model
                 cryptoStream.Read(buffer, 0, packetSize);
                 if (remainingFileSize == 0 && residuum != 0) netStream.Write(buffer, 0, packetSize - (16 - residuum));
                 else netStream.Write(buffer, 0, packetSize);
+
+                transferJob.Progress.Value = (fileSize - remainingFileSize) / progressStep;
             }
 
             cryptoStream.Close();
             fileStream.Close();
             netStream.Close();
-            connection.Close();
+            transferJob._client.Close();
         }
 
         private void ReceiveFile(object obj)
         {
-            TcpClient client = (TcpClient)obj;
-            NetworkStream netStream = client.GetStream();
+            TransferJob transferJob = (TransferJob)obj;
+            NetworkStream netStream = transferJob._client.GetStream();
             string path = Path.Combine(_appDirectory, PB_KEY_DIR) + "/file2.cpp";
             FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
 
             byte[] buffer = new byte[BUFFER_SIZE];
+
+            netStream.Read(buffer, 0, 4);
+            int fileSize = BitConverter.ToInt32(buffer, 0);
+            int progressStep = fileSize / 100;
+            transferJob.Progress.Minimum = 0;
+            transferJob.Progress.Maximum = 100;
+            transferJob.Progress.Value = 0;
 
             netStream.Read(buffer, 0, 4);
             int keySize = BitConverter.ToInt32(buffer, 0);
@@ -250,11 +268,12 @@ namespace Server.Model
             while ((bytesReceived = netStream.Read(buffer, 0, buffer.Length)) > 0)
             {
                 cryptoStream.Write(buffer, 0, bytesReceived);
+                transferJob.Progress.Value = (fileSize - bytesReceived) / progressStep;
             }
 
             fileStream.Close();
             netStream.Close();
-            client.Close();
+            transferJob._client.Close();
         }
 
         private void CreateAppDirectoryIfAbsent()
@@ -359,7 +378,7 @@ namespace Server.Model
             _appIsRunning = false;
         }
 
-        public ObservableCollection<TransferJob> GetTransfers()
+        public ItemsChangeObservableCollection<TransferJob> GetTransfers()
         {
             return _jobs;
         }

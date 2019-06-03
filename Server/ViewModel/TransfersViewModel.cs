@@ -10,7 +10,7 @@ namespace Server.ViewModel
 {
     class TransfersViewModel : AbstractViewModel
     {
-        public ObservableCollection<TransferJob> Transfers { get; set; }
+        public ItemsChangeObservableCollection<TransferJob> Transfers { get; set; }
 
         public TransfersViewModel(INavigationService ns, IApplication app) : base(ns, app)
         {

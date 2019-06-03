@@ -1,12 +1,11 @@
 ﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Security.Cryptography;
 
 namespace Server.Model
 {
     interface IApplication
     {
-        ObservableCollection<TransferJob> GetTransfers();
+        ItemsChangeObservableCollection<TransferJob> GetTransfers();
 
         List<Recipient> GetRecipients();
 

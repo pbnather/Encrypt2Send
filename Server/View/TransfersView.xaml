@@ -14,7 +14,8 @@
                     <DockPanel Margin="0,0,0,0">
                         <!--<CheckBox  IsChecked="{Binding IsChecked, Mode=TwoWay}" HorizontalAlignment="Left" Margin="5,5,5,5" DockPanel.Dock="Left" Width="20"/>-->
                         <TextBlock Text="{Binding JobType}" Margin="5,5,5,5" DockPanel.Dock="Left" Width="100" />
-                        <ProgressBar Minimum="{Binding JobProgress.Minimum}" Maximum="{Binding JobProgress.Maximum}" Value="{Binding JobProgress.Value}" x:Name="jobProgressBar" Height="10" Width="100"/>
+                        <ProgressBar Margin="5,5,5,5" Minimum="{Binding Progress.Minimum}" Maximum="{Binding Progress.Maximum}" Value="{Binding Progress.Value}" x:Name="jobProgressBar" Height="10" Width="250"/>
+                        <Button  Content="Decrypt" Margin="5,5,5,5" Width="50"/>
                     </DockPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
