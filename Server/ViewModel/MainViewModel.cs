@@ -147,7 +147,7 @@ namespace Server.ViewModel
             CipherModes.Add(new CipherModeCheckBoxable(CipherMode.CBC.ToString(), 1));
             CipherModes.Add(new CipherModeCheckBoxable(CipherMode.CFB.ToString(), 4));
             CipherModes.Add(new CipherModeCheckBoxable(CipherMode.ECB.ToString(), 2));
-            CipherModes.Add(new CipherModeCheckBoxable(CipherMode.OFB.ToString(), 3));
+            //CipherModes.Add(new CipherModeCheckBoxable(CipherMode.OFB.ToString(), 3));
             NotifyPropertyChanged(nameof(CipherModes));
         }
 
