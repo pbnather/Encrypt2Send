@@ -15,7 +15,7 @@
                 <Label x:Name="encryptionModeLabel" Content="Encryption mode:" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="105" RenderTransformOrigin="0.474,0.481"/>
                 <Label x:Name="fileNameLabel" Content="File:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" RenderTransformOrigin="0.339,0.224"/>
                 <Label x:Name="encryptedFileNameLabel" Content="Encrypted file name:" HorizontalAlignment="Left" Margin="10,72,0,0" VerticalAlignment="Top"/>
-                <ComboBox x:Name="encryptionModeComboBox" HorizontalAlignment="Left" Margin="132,45,0,0" VerticalAlignment="Top" Width="220"/>
+                <ComboBox x:Name="encryptionModeComboBox" SelectedItem="{Binding SelectedChiperMode}" IsSynchronizedWithCurrentItem="True" ItemsSource="{Binding CipherModes}" HorizontalAlignment="Left" Margin="132,45,0,0" VerticalAlignment="Top" Width="220"/>
                 <TextBox x:Name="encryptedFileNameTextBox" HorizontalAlignment="Left" Height="22" Margin="132,76,0,0" TextWrapping="Wrap" Text="{Binding EncryptedFileName, Mode=TwoWay}" VerticalAlignment="Top" Width="220"/>
                 <Button x:Name="settingsButton" Content="Settings..." Command="{Binding ChangeSettings}" Margin="357,45,10,0" VerticalAlignment="Top" Height="22"/>
             </Grid>

@@ -4,6 +4,7 @@ using Server.Model;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 
 namespace Server.ViewModel
 {
@@ -12,7 +13,64 @@ namespace Server.ViewModel
         public string SelectedFileName { get; set; }
         public string EncryptedFileName { get; set; }
 
+        public CipherModeCheckBoxable SelectedChiperMode { get; set; }
+        public List<CipherModeCheckBoxable> CipherModes { get; set; }
+
         public int SelectedRecipientsCount => _checkableRecipients.FindAll(r => r.IsChecked == true).Count;
+        public class CipherModeCheckBoxable : INotifyPropertyChanged
+        {
+            private string _mode;
+            private int _modeNumber;
+
+            public string Mode
+            {
+                get
+                {
+                    return _mode;
+                }
+                set
+                {
+                    if (_mode != value)
+                    {
+                        _mode = value;
+                        NotifyPropertyChanged(nameof(Mode));
+                    }
+                }
+            }
+            public int ModeNumber
+            {
+                get
+                {
+                    return _modeNumber;
+                }
+                set
+                {
+                    if (_modeNumber != value)
+                    {
+                        _modeNumber = value;
+                        NotifyPropertyChanged(nameof(ModeNumber));
+                    }
+                }
+            }
+
+            public CipherModeCheckBoxable(string mode, int number)
+            {
+                _mode = mode;
+                _modeNumber = number;
+            }
+
+            public override string ToString()
+            {
+                return _mode;
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+            protected virtual void NotifyPropertyChanged([CallerMemberName] string propertyName = null)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+
+        }
         public class CheckableRecipient : INotifyPropertyChanged
         {
             private Recipient _recipient;
@@ -85,6 +143,12 @@ namespace Server.ViewModel
             {
                 _navService.OpenWindow(ViewModelFactory.CreateCreatePrivateKeyViewModel());
             }
+            CipherModes = new List<CipherModeCheckBoxable>();
+            CipherModes.Add(new CipherModeCheckBoxable(CipherMode.CBC.ToString(), 1));
+            CipherModes.Add(new CipherModeCheckBoxable(CipherMode.CFB.ToString(), 4));
+            CipherModes.Add(new CipherModeCheckBoxable(CipherMode.ECB.ToString(), 2));
+            CipherModes.Add(new CipherModeCheckBoxable(CipherMode.OFB.ToString(), 3));
+            NotifyPropertyChanged(nameof(CipherModes));
         }
 
         private ICommand _chooseFile;
@@ -130,6 +194,7 @@ namespace Server.ViewModel
             List<Recipient> selectedRecipients = _checkableRecipients
                 .FindAll(r => r.IsChecked == true)
                 .ConvertAll(r => r.Recipient);
+            _app.ChangeEncryptionSettings((CipherMode)CipherModes[SelectedChiperMode.ModeNumber].ModeNumber);
             _app.EncryptAndSend(selectedRecipients, SelectedFileName, EncryptedFileName);
         }
 

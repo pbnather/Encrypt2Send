@@ -94,7 +94,7 @@ namespace Server.Model
 
         public void ChangeEncryptionSettings(CipherMode mode, int blockSize = -1)
         {
-            throw new NotImplementedException();
+            _aes.Mode = mode;
         }
 
         public bool HasPrivateKey()
