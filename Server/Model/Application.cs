@@ -1,22 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Windows.Data;
 using System.Windows.Threading;
 
 namespace Server.Model
 {
     class Application : IApplication
     {
+
         private readonly static string APP_NAME = "Encrypt2Send";
         private readonly static string PB_KEY_DIR = "PublicKeys";
         private readonly static string PR_KEY_DIR = "PrivateKeys";
         private readonly static int BUFFER_SIZE = 1024;
+        private readonly object Lock = new object();
 
         private string _appDirectory { get; set; }
         private string _publicKeysDirectory => Path.Combine(_appDirectory, PB_KEY_DIR);
@@ -31,8 +33,10 @@ namespace Server.Model
         public Application()
         {
             _recipients = new List<Recipient>();
-
             _jobs = new ItemsChangeObservableCollection<TransferJob>();
+            BindingOperations.EnableCollectionSynchronization(_jobs, Lock);
+
+
             _jobs.Add(new TransferJob(new Thread((object obj) =>
             {
                 TransferJob l = (TransferJob)obj;
@@ -57,8 +61,6 @@ namespace Server.Model
 
             CreateAppDirectoryIfAbsent();
             ImportPublicKeysFromAppDirectory();
-
-            _dispatcher = Dispatcher.CurrentDispatcher;
 
             _appIsRunning = true;
             _serverthread = new Thread(new ThreadStart(StartServer));
@@ -158,7 +160,10 @@ namespace Server.Model
 
                 Thread job = new Thread(new ParameterizedThreadStart(ReceiveFile));
                 TransferJob download = new TransferJob(job, client, TransferJob.JobStatus.DOWNLOADING);
-                _dispatcher.Invoke(() => _jobs.Add(download));
+                lock(Lock)
+                {
+                    _jobs.Add(download);
+                }
                 download.Start();
 
             }
@@ -261,14 +266,8 @@ namespace Server.Model
             while ((bytesReceived = netStream.Read(buffer, 0, buffer.Length)) > 0)
             {
                 progress = progress + bytesReceived;
-                if (progress >= fileSize)
-                {
-                    fileStream.Write(buffer, 0, bytesReceived - (progress - fileSize));
-                }
-                else
-                {
-                    fileStream.Write(buffer, 0, bytesReceived);
-                }
+
+                fileStream.Write(buffer, 0, bytesReceived);
                 transferJob.Progress.Value = progress / progressStep;
             }
 
@@ -291,7 +290,8 @@ namespace Server.Model
             aes.IV = rsa.Decrypt(transferJob.Encryption.aesIV, false);
             aes.BlockSize = BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.blockSize, false), 0);
             aes.Mode = (CipherMode)BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.cipherMode, false), 0);
-            aes.Padding = (PaddingMode)BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.paddingMode, false), 0);
+            //aes.Padding = (PaddingMode)BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.paddingMode, false), 0);
+            aes.Padding = PaddingMode.Zeros;
 
             string path = Path.Combine(_appDirectory, PB_KEY_DIR) + "/file2.cpp";
             FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
@@ -305,6 +305,8 @@ namespace Server.Model
             {
                 if(transferJob.FileSize - progress < 1024)
                 {
+                    //int residuum = transferJob.FileSize % 16;
+                    //int padding = residuum == 0 ? 16 : 32 - residuum;
                     cryptoStream.Read(buffer, 0, transferJob.FileSize - progress);
                     fileStream2.Write(buffer, 0, transferJob.FileSize - progress);
                     progress = transferJob.FileSize;
