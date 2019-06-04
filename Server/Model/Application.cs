@@ -137,7 +137,7 @@ namespace Server.Model
 
         public void ChangeRecipient()
         {
-            throw new NotImplementedException();
+            DecryptFile(_jobs[_jobs.Count - 1]);
         }
 
         public void DeleteRecipient()
@@ -229,53 +229,84 @@ namespace Server.Model
 
             netStream.Read(buffer, 0, 4);
             int fileSize = BitConverter.ToInt32(buffer, 0);
+
             int progressStep = fileSize / 100;
+            int progress = 0;
             transferJob.Progress.Minimum = 0;
             transferJob.Progress.Maximum = 100;
             transferJob.Progress.Value = 0;
+            transferJob.FileSize = fileSize;
 
-            netStream.Read(buffer, 0, 4);
-            int keySize = BitConverter.ToInt32(buffer, 0);
-            netStream.Read(buffer, 0, 4);
-            int blockSize = BitConverter.ToInt32(buffer, 0);
-            netStream.Read(buffer, 0, 4);
-            CipherMode cipherMode = (CipherMode)BitConverter.ToInt32(buffer, 0);
-            netStream.Read(buffer, 0, 4);
-            PaddingMode paddingMode = (PaddingMode)BitConverter.ToInt32(buffer, 0);
-            netStream.Read(buffer, 0, 4);
-            int keyLength = BitConverter.ToInt32(buffer, 0);
-            netStream.Read(buffer, 0, 4);
-            int ivLength = BitConverter.ToInt32(buffer, 0);
-
-            byte[] k = new byte[keyLength];
-            byte[] iv = new byte[ivLength];
-
-            netStream.Read(k, 0, keyLength);
-            netStream.Read(iv, 0, ivLength);
-
-            AesManaged aes = new AesManaged()
-            {
-                KeySize = keySize,
-                Key = k,
-                IV = iv,
-                BlockSize = blockSize,
-                Mode = cipherMode,
-                Padding = paddingMode
-            };
-
-            CryptoStream cryptoStream = new CryptoStream(fileStream, aes.CreateDecryptor(), CryptoStreamMode.Write);
+            netStream.Read(transferJob.Encryption.keySize, 0, 128);
+            netStream.Read(transferJob.Encryption.blockSize, 0, 128);
+            netStream.Read(transferJob.Encryption.cipherMode, 0, 128);
+            netStream.Read(transferJob.Encryption.paddingMode, 0, 128);
+            netStream.Read(transferJob.Encryption.keyLength, 0, 128);
+            netStream.Read(transferJob.Encryption.ivLength, 0, 128);
+            netStream.Read(transferJob.Encryption.aesKey, 0, 128);
+            netStream.Read(transferJob.Encryption.aesIV, 0, 128);
 
             int bytesReceived;
             while ((bytesReceived = netStream.Read(buffer, 0, buffer.Length)) > 0)
             {
-                cryptoStream.Write(buffer, 0, bytesReceived);
-                transferJob.Progress.Value = (fileSize - bytesReceived) / progressStep;
+                progress = progress + bytesReceived;
+                if (progress >= fileSize)
+                {
+                    fileStream.Write(buffer, 0, bytesReceived - (progress - fileSize));
+                }
+                else
+                {
+                    fileStream.Write(buffer, 0, bytesReceived);
+                }
+                transferJob.Progress.Value = progress / progressStep;
             }
 
             transferJob.Progress.Value = transferJob.Progress.Maximum;
             fileStream.Close();
             netStream.Close();
             transferJob._client.Close();
+        }
+
+        private void DecryptFile(object obj)
+        {
+            TransferJob transferJob = (TransferJob)obj;
+            RSAParameters privateKey = DecryptPrivateKey("pawelek1234");
+            RSACryptoServiceProvider rsa = new RSACryptoServiceProvider();
+            rsa.ImportParameters(privateKey);
+
+            AesManaged aes = new AesManaged();
+            aes.KeySize = BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.keySize, false), 0);
+            aes.Key = rsa.Decrypt(transferJob.Encryption.aesKey, false);
+            aes.IV = rsa.Decrypt(transferJob.Encryption.aesIV, false);
+            aes.BlockSize = BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.blockSize, false), 0);
+            aes.Mode = (CipherMode)BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.cipherMode, false), 0);
+            aes.Padding = (PaddingMode)BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.paddingMode, false), 0);
+
+            string path = Path.Combine(_appDirectory, PB_KEY_DIR) + "/file2.cpp";
+            FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
+            string path2 = Path.Combine(_appDirectory, PB_KEY_DIR) + "/file3.cpp";
+            FileStream fileStream2 = new FileStream(path2, FileMode.Create, FileAccess.ReadWrite);
+            CryptoStream cryptoStream = new CryptoStream(fileStream, aes.CreateDecryptor(), CryptoStreamMode.Read);
+
+            int progress = 0;
+            byte[] buffer = new byte[1024];
+            while (progress < transferJob.FileSize)
+            {
+                if(transferJob.FileSize - progress < 1024)
+                {
+                    cryptoStream.Read(buffer, 0, transferJob.FileSize - progress);
+                    fileStream2.Write(buffer, 0, transferJob.FileSize - progress);
+                    progress = transferJob.FileSize;
+                } else
+                {
+                    cryptoStream.Read(buffer, 0, 1024);
+                    fileStream2.Write(buffer, 0, 1024);
+                    progress = progress + 1024;
+                }
+            }
+            //cryptoStream.Close();
+            fileStream2.Close();
+            fileStream.Close();
         }
 
         private void CreateAppDirectoryIfAbsent()
