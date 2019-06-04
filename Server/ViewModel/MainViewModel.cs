@@ -109,6 +109,7 @@ namespace Server.ViewModel
 
         private void NavigateToSettingsView()
         {
+            _app.ChangeRecipient();
             _navService.OpenWindow(ViewModelFactory.CreateSettingsViewModel());
         }
 

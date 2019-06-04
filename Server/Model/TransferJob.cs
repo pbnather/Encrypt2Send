@@ -11,10 +11,11 @@ namespace Server.Model
         public TcpClient _client { get; set; }
         public JobStatus Type { get; private set; }
         public JobProgress Progress { get; set; }
+        public EncryptionInfo Encryption { get; set; }
         public Recipient Recipient { get; set; }
 
-        private string _fileSize { get; set; }
-        public string FileName
+        private int _fileSize { get; set; }
+        public int FileSize
         {
             get
             {
@@ -25,11 +26,37 @@ namespace Server.Model
                 if (_fileSize != value)
                 {
                     _fileSize = value;
+                    NotifyPropertyChanged(nameof(FileSize));
+                }
+            }
+        }
+        private string _fileName { get; set; }
+        public string FileName
+        {
+            get
+            {
+                return _fileName;
+            }
+            set
+            {
+                if (_fileName != value)
+                {
+                    _fileName = value;
                     NotifyPropertyChanged(nameof(FileName));
                 }
             }
         }
-
+        public class EncryptionInfo
+        {
+            public byte[] keySize = new byte[128];
+            public byte[] blockSize = new byte[128];
+            public byte[] cipherMode = new byte[128];
+            public byte[] paddingMode = new byte[128];
+            public byte[] keyLength = new byte[128];
+            public byte[] ivLength = new byte[128];
+            public byte[] aesKey = new byte[128];
+            public byte[] aesIV = new byte[128];
+        }
         public class JobProgress : INotifyPropertyChanged
         {
             private double _value { get; set; }
@@ -99,6 +126,7 @@ namespace Server.Model
             _client = client;
             Type = jobType;
             Progress = new JobProgress();
+            Encryption = new EncryptionInfo();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
