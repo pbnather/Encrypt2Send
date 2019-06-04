@@ -28,7 +28,7 @@ namespace Server.Model
         private List<Recipient> _recipients { get; set; }
         private ItemsChangeObservableCollection<TransferJob> _jobs { get; set; }
         private Thread _serverthread { get; set; }
-        private AesManaged _aes { get; set; }
+        private RijndaelManaged _aes { get; set; }
         private Dispatcher _dispatcher { get; set; }
         private volatile bool _appIsRunning;
 
@@ -53,7 +53,7 @@ namespace Server.Model
                 }
             }), null, TransferJob.JobStatus.DOWNLOADING));
 
-            _aes = new AesManaged
+            _aes = new RijndaelManaged
             {
                 Mode = CipherMode.CBC,
                 KeySize = 128,
@@ -107,7 +107,7 @@ namespace Server.Model
         {
             byte[] passwordHash = GetPasswordHash(password);
 
-            using (AesManaged aes = GetAesForPrivateKey(passwordHash))
+            using (RijndaelManaged aes = GetAesForPrivateKey(passwordHash))
             {
                 string file = Path.Combine(_privateKeyDirectory) + "/myprivatekey.xml";
                 FileStream fileStream = new FileStream(file, FileMode.Create, FileAccess.ReadWrite);
@@ -289,7 +289,7 @@ namespace Server.Model
             RSACryptoServiceProvider rsa = new RSACryptoServiceProvider();
             rsa.ImportParameters(privateKey);
 
-            AesManaged aes = new AesManaged();
+            RijndaelManaged aes = new RijndaelManaged();
             aes.KeySize = BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.keySize, false), 0);
             aes.Key = rsa.Decrypt(transferJob.Encryption.aesKey, false);
             aes.IV = rsa.Decrypt(transferJob.Encryption.aesIV, false);
@@ -360,7 +360,7 @@ namespace Server.Model
             return passwordHash;
         }
 
-        private AesManaged GetAesForPrivateKey(byte[] passwordHash)
+        private RijndaelManaged GetAesForPrivateKey(byte[] passwordHash)
         {
             byte[] passwordKey = new byte[16];
             byte[] passwordIV = new byte[16];
@@ -371,7 +371,7 @@ namespace Server.Model
                 passwordIV[i] = passwordHash[16 + i];
             }
 
-            AesManaged aes = new AesManaged
+            RijndaelManaged aes = new RijndaelManaged
             {
                 BlockSize = 128,
                 KeySize = 128,
@@ -387,7 +387,7 @@ namespace Server.Model
         {
             RSAParameters rsaParameters = new RSAParameters();
             byte[] passwordHash = GetPasswordHash(password);
-            using(AesManaged aes = GetAesForPrivateKey(passwordHash))
+            using(RijndaelManaged aes = GetAesForPrivateKey(passwordHash))
             {
                 string file = Path.Combine(_privateKeyDirectory) + "/myprivatekey.xml";
                 FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read);

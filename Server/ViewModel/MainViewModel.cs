@@ -194,7 +194,7 @@ namespace Server.ViewModel
             List<Recipient> selectedRecipients = _checkableRecipients
                 .FindAll(r => r.IsChecked == true)
                 .ConvertAll(r => r.Recipient);
-            _app.ChangeEncryptionSettings((CipherMode)CipherModes[SelectedChiperMode.ModeNumber].ModeNumber);
+            _app.ChangeEncryptionSettings((CipherMode)SelectedChiperMode.ModeNumber);
             _app.EncryptAndSend(selectedRecipients, SelectedFileName, EncryptedFileName);
         }
 
