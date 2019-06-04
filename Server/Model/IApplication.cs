@@ -17,6 +17,8 @@ namespace Server.Model
 
         void GeneratePrivateKey(string password);
 
+        void DecryptAndSaveFile(string fileName, string password);
+
         void AddRecipient();
 
         void ChangeRecipient();

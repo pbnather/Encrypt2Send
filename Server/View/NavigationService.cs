@@ -28,6 +28,9 @@ namespace Server.View
                 case "TransfersViewModel":
                     window = new TransfersView() { DataContext = vm };
                     break;
+                case "DecryptAndSaveFileViewModel":
+                    window = new DecryptAndSaveFileView() { DataContext = vm };
+                    break;
             }
 
             if (window == null) return;

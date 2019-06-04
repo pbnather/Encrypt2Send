@@ -17,12 +17,14 @@ namespace Server.Model
         private readonly static string APP_NAME = "Encrypt2Send";
         private readonly static string PB_KEY_DIR = "PublicKeys";
         private readonly static string PR_KEY_DIR = "PrivateKeys";
+        private readonly static string DOWNLOADS_DIR = "Downloads";
         private readonly static int BUFFER_SIZE = 1024;
         private readonly object Lock = new object();
 
         private string _appDirectory { get; set; }
         private string _publicKeysDirectory => Path.Combine(_appDirectory, PB_KEY_DIR);
         private string _privateKeyDirectory => Path.Combine(_appDirectory, PR_KEY_DIR);
+        private string _downloadsDirectory => Path.Combine(_appDirectory, DOWNLOADS_DIR);
         private List<Recipient> _recipients { get; set; }
         private ItemsChangeObservableCollection<TransferJob> _jobs { get; set; }
         private Thread _serverthread { get; set; }
@@ -83,7 +85,7 @@ namespace Server.Model
                     Thread job = new Thread(new ParameterizedThreadStart(SendFile));
                     TransferJob send = new TransferJob(job, client, TransferJob.JobStatus.UPLOADING);
                     _jobs.Add(send);
-                    send.FileName = file;
+                    send.SavedFile = file;
                     send.Recipient = recipient;
                     send.Start();
                 }
@@ -174,7 +176,7 @@ namespace Server.Model
             TransferJob transferJob = (TransferJob)obj;
 
             NetworkStream netStream = transferJob._client.GetStream();
-            FileStream fileStream = new FileStream(transferJob.FileName, FileMode.Open, FileAccess.Read);
+            FileStream fileStream = new FileStream(transferJob.SavedFile, FileMode.Open, FileAccess.Read);
             transferJob.Progress.Minimum = 0;
             transferJob.Progress.Maximum = 100;
             transferJob.Progress.Value = 0;
@@ -232,14 +234,16 @@ namespace Server.Model
             fileStream.Close();
             netStream.Close();
             transferJob._client.Close();
+            transferJob.Type = TransferJob.JobStatus.FINISHED;
         }
 
         private void ReceiveFile(object obj)
         {
             TransferJob transferJob = (TransferJob)obj;
             NetworkStream netStream = transferJob._client.GetStream();
-            string path = Path.Combine(_appDirectory, PB_KEY_DIR) + "/file2.cpp";
+            string path = _downloadsDirectory + "/" + Guid.NewGuid().ToString();
             FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
+            transferJob.SavedFile = path;
 
             byte[] buffer = new byte[BUFFER_SIZE];
 
@@ -275,12 +279,13 @@ namespace Server.Model
             fileStream.Close();
             netStream.Close();
             transferJob._client.Close();
+            transferJob.Type = TransferJob.JobStatus.FINISHED;
         }
 
         private void DecryptFile(object obj)
         {
             TransferJob transferJob = (TransferJob)obj;
-            RSAParameters privateKey = DecryptPrivateKey("pawelek1234");
+            RSAParameters privateKey = transferJob.Rsa;
             RSACryptoServiceProvider rsa = new RSACryptoServiceProvider();
             rsa.ImportParameters(privateKey);
 
@@ -290,13 +295,10 @@ namespace Server.Model
             aes.IV = rsa.Decrypt(transferJob.Encryption.aesIV, false);
             aes.BlockSize = BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.blockSize, false), 0);
             aes.Mode = (CipherMode)BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.cipherMode, false), 0);
-            //aes.Padding = (PaddingMode)BitConverter.ToInt32(rsa.Decrypt(transferJob.Encryption.paddingMode, false), 0);
             aes.Padding = PaddingMode.Zeros;
 
-            string path = Path.Combine(_appDirectory, PB_KEY_DIR) + "/file2.cpp";
-            FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
-            string path2 = Path.Combine(_appDirectory, PB_KEY_DIR) + "/file3.cpp";
-            FileStream fileStream2 = new FileStream(path2, FileMode.Create, FileAccess.ReadWrite);
+            FileStream fileStream = new FileStream(transferJob.SavedFile, FileMode.Open, FileAccess.Read);
+            FileStream fileStream2 = new FileStream(transferJob.NewFile, FileMode.Create, FileAccess.ReadWrite);
             CryptoStream cryptoStream = new CryptoStream(fileStream, aes.CreateDecryptor(), CryptoStreamMode.Read);
 
             int progress = 0;
@@ -305,8 +307,6 @@ namespace Server.Model
             {
                 if(transferJob.FileSize - progress < 1024)
                 {
-                    //int residuum = transferJob.FileSize % 16;
-                    //int padding = residuum == 0 ? 16 : 32 - residuum;
                     cryptoStream.Read(buffer, 0, transferJob.FileSize - progress);
                     fileStream2.Write(buffer, 0, transferJob.FileSize - progress);
                     progress = transferJob.FileSize;
@@ -317,7 +317,6 @@ namespace Server.Model
                     progress = progress + 1024;
                 }
             }
-            //cryptoStream.Close();
             fileStream2.Close();
             fileStream.Close();
         }
@@ -332,6 +331,7 @@ namespace Server.Model
             }
             Directory.CreateDirectory(_publicKeysDirectory);
             Directory.CreateDirectory(_privateKeyDirectory);
+            Directory.CreateDirectory(_downloadsDirectory);
         }
 
         private void ImportPublicKeysFromAppDirectory()
@@ -427,6 +427,23 @@ namespace Server.Model
         public ItemsChangeObservableCollection<TransferJob> GetTransfers()
         {
             return _jobs;
+        }
+
+        public void DecryptAndSaveFile(string fileName, string password)
+        {
+            foreach(TransferJob job in _jobs)
+            {
+                if(job.Type == TransferJob.JobStatus.DECRYPTING)
+                {
+                    job.Rsa = DecryptPrivateKey(password);
+                    job._thread = new Thread(new ParameterizedThreadStart(DecryptFile));
+                    job._thread.IsBackground = true;
+                    job.Type = TransferJob.JobStatus.FINISHED;
+                    job.NewFile = fileName;
+                    job.Start();
+                    break;
+                }
+            }
         }
 
         ~Application()

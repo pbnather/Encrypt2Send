@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Threading;
 
 namespace Server.Model
@@ -9,10 +10,11 @@ namespace Server.Model
     {
         public Thread _thread { get; set; }
         public TcpClient _client { get; set; }
-        public JobStatus Type { get; private set; }
+        public JobStatus Type { get; set; }
         public JobProgress Progress { get; set; }
         public EncryptionInfo Encryption { get; set; }
         public Recipient Recipient { get; set; }
+        public RSAParameters Rsa { get; set; }
 
         private int _fileSize { get; set; }
         public int FileSize
@@ -30,19 +32,35 @@ namespace Server.Model
                 }
             }
         }
-        private string _fileName { get; set; }
-        public string FileName
+        private string _savedFileName { get; set; }
+        public string SavedFile
         {
             get
             {
-                return _fileName;
+                return _savedFileName;
             }
             set
             {
-                if (_fileName != value)
+                if (_savedFileName != value)
                 {
-                    _fileName = value;
-                    NotifyPropertyChanged(nameof(FileName));
+                    _savedFileName = value;
+                    NotifyPropertyChanged(nameof(SavedFile));
+                }
+            }
+        }
+        private string _newFilename { get; set; }
+        public string NewFile
+        {
+            get
+            {
+                return _newFilename;
+            }
+            set
+            {
+                if (_newFilename != value)
+                {
+                    _newFilename = value;
+                    NotifyPropertyChanged(nameof(NewFile));
                 }
             }
         }
@@ -116,7 +134,8 @@ namespace Server.Model
         {
             DOWNLOADING,
             UPLOADING,
-            FINISHED
+            FINISHED,
+            DECRYPTING
         }
 
         public TransferJob(Thread job, TcpClient client, JobStatus jobType)
