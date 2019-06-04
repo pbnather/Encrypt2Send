@@ -82,6 +82,7 @@ namespace Server.Model
                     TransferJob send = new TransferJob(job, client, TransferJob.JobStatus.UPLOADING);
                     _jobs.Add(send);
                     send.FileName = file;
+                    send.Recipient = recipient;
                     send.Start();
                 }
             }
@@ -185,16 +186,25 @@ namespace Server.Model
             int packetSize = 0;
             byte[] buffer;
 
-            netStream.Write(BitConverter.GetBytes(fileSize), 0, 4);
-            netStream.Write(BitConverter.GetBytes(keySize), 0, 4);
-            netStream.Write(BitConverter.GetBytes(blockSize), 0, 4);
-            netStream.Write(BitConverter.GetBytes(cipherMode), 0, 4);
-            netStream.Write(BitConverter.GetBytes(paddingMode), 0, 4);
-            netStream.Write(BitConverter.GetBytes(_aes.Key.Length), 0, 4);
-            netStream.Write(BitConverter.GetBytes(_aes.IV.Length), 0, 4);
+            netStream.Write(BitConverter.GetBytes(fileLength), 0, 4);
 
-            netStream.Write(_aes.Key, 0, _aes.Key.Length);
-            netStream.Write(_aes.IV, 0, _aes.IV.Length);
+            using (RSACryptoServiceProvider rsa = new RSACryptoServiceProvider())
+            {
+                rsa.ImportParameters(transferJob.Recipient.PublicKeyParams);
+                netStream.Write(rsa.Encrypt(BitConverter.GetBytes(keySize), false), 0, 128);
+                netStream.Write(rsa.Encrypt(BitConverter.GetBytes(blockSize), false), 0, 128);
+                netStream.Write(rsa.Encrypt(BitConverter.GetBytes(cipherMode), false), 0, 128);
+                netStream.Write(rsa.Encrypt(BitConverter.GetBytes(paddingMode), false), 0, 128);
+                netStream.Write(rsa.Encrypt(BitConverter.GetBytes(_aes.Key.Length), false), 0, 128);
+                netStream.Write(rsa.Encrypt(BitConverter.GetBytes(_aes.IV.Length), false), 0, 128);
+                lock (_aes)
+                {
+                    _aes.GenerateIV();
+                    _aes.GenerateKey();
+                    netStream.Write(rsa.Encrypt(_aes.Key, false), 0, 128);
+                    netStream.Write(rsa.Encrypt(_aes.IV, false), 0, 128);
+                }
+            }
 
             CryptoStream cryptoStream = new CryptoStream(fileStream, _aes.CreateEncryptor(), CryptoStreamMode.Read);
 
@@ -206,11 +216,12 @@ namespace Server.Model
 
                 buffer = new byte[packetSize];
                 cryptoStream.Read(buffer, 0, packetSize);
-                if (remainingFileSize == 0 && residuum != 0) netStream.Write(buffer, 0, packetSize - (16 - residuum));
-                else netStream.Write(buffer, 0, packetSize);
+                netStream.Write(buffer, 0, packetSize);
 
                 transferJob.Progress.Value = (fileSize - remainingFileSize) / progressStep;
             }
+
+            transferJob.Progress.Value = transferJob.Progress.Maximum;
 
             cryptoStream.Close();
             fileStream.Close();

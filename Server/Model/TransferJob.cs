@@ -11,6 +11,7 @@ namespace Server.Model
         public TcpClient _client { get; set; }
         public JobStatus Type { get; private set; }
         public JobProgress Progress { get; set; }
+        public Recipient Recipient { get; set; }
 
         private string _fileSize { get; set; }
         public string FileName
